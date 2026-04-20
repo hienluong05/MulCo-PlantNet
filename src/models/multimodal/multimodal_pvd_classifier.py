@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 
-from models.fusion.multimodal_pvd_fusion import MultimodalPVDFusion
-from models.heads.classification_head import ClassificationHead
+from src.models.fusion.multimodal_pvd_fusion import MultimodalPVDFusion
+from src.models.heads.classification_head import ClassificationHead
 
 
 class MultimodalPVDClassifier(nn.Module):
