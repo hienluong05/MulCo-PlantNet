@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import timm
 
-from models.backbones.vision.text_guided_cbam import TextGuidedCBAM
+from src.models.backbones.vision.text_guided_cbam import TextGuidedCBAM
 
 
 class ConvNeXt_TextGuidedCBAM(nn.Module):
@@ -23,10 +23,6 @@ class ConvNeXt_TextGuidedCBAM(nn.Module):
         self.model.head = nn.Linear(in_features, num_classes)
 
     def forward(self, x, text_feat):
-        """
-        x: [B, 3, H, W]
-        text_feat: [B, text_dim]
-        """
         attn_maps = {}
 
         x = self.model.stem(x)

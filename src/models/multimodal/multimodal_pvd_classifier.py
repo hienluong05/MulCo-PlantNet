@@ -39,9 +39,9 @@ class MultimodalPVDClassifier(nn.Module):
 
     def forward(self, image_feat, text_feat, return_all=False):
         fusion_outputs = self.fusion(image_feat, text_feat, return_all=True)
-        fused_feature = fusion_outputs["fused_feature"]   # [B, 512]
+        fused_feature = fusion_outputs["fused_feature"]
 
-        logits = self.classification_head(fused_feature)  # [B, num_classes]
+        logits = self.classification_head(fused_feature)
 
         if return_all:
             fusion_outputs["logits"] = logits

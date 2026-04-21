@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 import timm
 
-from models.backbones.vision.cbam import CBAM
+from src.models.backbones.vision.cbam import CBAM
+
 
 class ConvNeXt_CBAM(nn.Module):
     def __init__(self, num_classes):
@@ -38,11 +39,11 @@ class ConvNeXt_CBAM(nn.Module):
         x = self.norm4(x)
 
         x = self.global_pool(x)
-        x = torch.flatten(x, 1)   # [B, 1024]
+        x = torch.flatten(x, 1)
         return x
 
     def forward(self, x, return_features=False):
-        feats = self.forward_features(x)   # [B, 1024]
+        feats = self.forward_features(x)
         logits = self.model.head(feats)
 
         if return_features:
