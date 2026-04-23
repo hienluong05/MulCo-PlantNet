@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from contrastive_losses import ImageTextInfoNCELoss, SupConLoss
+from src.models.losses.contrastive_losses import ImageTextInfoNCELoss, SupConLoss
 
 
 class InfoNCESupConLoss(nn.Module):

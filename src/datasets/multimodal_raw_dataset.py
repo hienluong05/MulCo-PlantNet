@@ -210,7 +210,12 @@ class MultiModalRawDataset(Dataset):
     def __getitem__(self, idx):
         item = self.samples[idx]
 
-        image = Image.open(item["image_path"]).convert("RGB")
+        try:
+            image = Image.open(item["image_path"]).convert("RGB")
+        except Exception as e:
+            print(f"[ERROR] Failed to open image: {item['image_path']}")
+            raise e
+
         if self.transform is not None:
             image = self.transform(image)
 
