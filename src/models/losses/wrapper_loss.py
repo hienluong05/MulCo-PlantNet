@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from contrastive_losses import ImageTextInfoNCELoss, SupConLoss
 
@@ -41,7 +40,7 @@ class InfoNCESupConLoss(nn.Module):
 
         return {
             "loss": total_loss,
-            "loss_ce": loss_ce.detach(),
-            "loss_itc": loss_itc.detach(),
-            "loss_supcon": loss_supcon.detach(),
+            "loss_ce": loss_ce,
+            "loss_itc": loss_itc,
+            "loss_supcon": loss_supcon,
         }
