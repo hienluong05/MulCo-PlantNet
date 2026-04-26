@@ -32,7 +32,7 @@ class ProjectionHead(nn.Module):
 
 class PVDModule(nn.Module):
     """
-    PVD nhận đầu vào là [V'; T'] có shape [B, 2*proj_dim]
+    PVD nhận đầu vào là [V'; T'; V'*T'] có shape [B, 3*proj_dim]
     và xuất ra PVD_output có shape [B, proj_dim]
     """
     def __init__(
@@ -44,14 +44,15 @@ class PVDModule(nn.Module):
         super().__init__()
 
         self.mlp = nn.Sequential(
-            nn.Linear(proj_dim * 2, hidden_dim),
+            nn.Linear(proj_dim * 3, hidden_dim),
             nn.GELU(),
             nn.Dropout(dropout),
             nn.Linear(hidden_dim, proj_dim)
         )
 
     def forward(self, image_proj, text_proj):
-        fused_input = torch.cat([image_proj, text_proj], dim=-1)   # [B, 2*proj_dim]
+        cross_interact = image_proj * text_proj                    # Bilinear interaction
+        fused_input = torch.cat([image_proj, text_proj, cross_interact], dim=-1)   # [B, 3*proj_dim]
         pvd_output = self.mlp(fused_input)                         # [B, proj_dim]
         return pvd_output
 
@@ -93,6 +94,12 @@ class MultimodalPVDFusion(nn.Module):
             dropout=dropout
         )
 
+        # 3. Gating Mechanism (Cơ chế cổng học trọng số động)
+        self.gate = nn.Sequential(
+            nn.Linear(proj_dim * 2, proj_dim),
+            nn.Sigmoid()
+        )
+
     def forward(self, image_feat, text_feat, return_all=False):
         # Step 1: project to common space
         image_proj = self.image_projection(image_feat)   # [B, proj_dim]
@@ -101,8 +108,10 @@ class MultimodalPVDFusion(nn.Module):
         # Step 2: PVD
         pvd_output = self.pvd(image_proj, text_proj)     # [B, proj_dim]
 
-        # Step 3: Residual fusion
-        fused_feature = image_proj + text_proj + pvd_output   # [B, proj_dim]
+        # Step 3: Gated Residual fusion
+        # Tạo mặt nạ học trọng số dựa trên thông tin cả 2 modality
+        gate_weight = self.gate(torch.cat([image_proj, text_proj], dim=-1))
+        fused_feature = (gate_weight * image_proj) + ((1 - gate_weight) * text_proj) + pvd_output   # [B, proj_dim]
 
         if return_all:
             return {
