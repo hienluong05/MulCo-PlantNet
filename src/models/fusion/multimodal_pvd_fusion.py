@@ -30,31 +30,43 @@ class ProjectionHead(nn.Module):
         return x
 
 
-class PVDModule(nn.Module):
+class TransformerFusionModule(nn.Module):
     """
-    PVD nhận đầu vào là [V'; T'; V'*T'] có shape [B, 3*proj_dim]
-    và xuất ra PVD_output có shape [B, proj_dim]
+    Sử dụng Multi-Head Self-Attention để fusion Image và Text.
+    Đầu vào: image_proj [B, proj_dim], text_proj [B, proj_dim]
+    Đầu ra: fused_output [B, proj_dim]
     """
     def __init__(
         self,
         proj_dim: int = 512,
+        num_heads: int = 8,
         hidden_dim: int = 768,
+        num_layers: int = 2,
         dropout: float = 0.2
     ):
         super().__init__()
 
-        self.mlp = nn.Sequential(
-            nn.Linear(proj_dim * 3, hidden_dim),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(hidden_dim, proj_dim)
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=proj_dim,
+            nhead=num_heads,
+            dim_feedforward=hidden_dim,
+            dropout=dropout,
+            activation="gelu",
+            batch_first=True
         )
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
     def forward(self, image_proj, text_proj):
-        cross_interact = image_proj * text_proj                    # Bilinear interaction
-        fused_input = torch.cat([image_proj, text_proj, cross_interact], dim=-1)   # [B, 3*proj_dim]
-        pvd_output = self.mlp(fused_input)                         # [B, proj_dim]
-        return pvd_output
+        # Stack thành sequence có 2 token: [B, 2, proj_dim]
+        seq = torch.stack([image_proj, text_proj], dim=1)
+        
+        # Pass qua Transformer
+        out_seq = self.transformer(seq) # [B, 2, proj_dim]
+        
+        # Average pooling 2 token để ra vector đại diện chung
+        fused_output = out_seq.mean(dim=1) # [B, proj_dim]
+        
+        return fused_output
 
 
 class MultimodalPVDFusion(nn.Module):
@@ -87,10 +99,12 @@ class MultimodalPVDFusion(nn.Module):
             normalize=normalize_projection
         )
 
-        # 2. PVD module
-        self.pvd = PVDModule(
+        # 2. Transformer Fusion module (thay thế PVD MLP cũ)
+        self.pvd = TransformerFusionModule(
             proj_dim=proj_dim,
+            num_heads=8,
             hidden_dim=pvd_hidden_dim,
+            num_layers=2,
             dropout=dropout
         )
 

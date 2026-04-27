@@ -1,0 +1,32 @@
+﻿,precision,recall,f1-score,support
+Apple_Scab_Leaf,0.0,0.0,0.0,10.0
+Apple_leaf,0.0,0.0,0.0,10.0
+Apple_rust_leaf,0.0,0.0,0.0,12.0
+Bell_pepper_leaf,1.0,1.0,1.0,5.0
+Bell_pepper_leaf_spot,1.0,1.0,1.0,9.0
+Blueberry_leaf,1.0,1.0,1.0,13.0
+Cherry_leaf,1.0,1.0,1.0,6.0
+Corn_Gray_leaf_spot,0.8571428571428571,0.75,0.8,8.0
+Corn_leaf_blight,0.9545454545454546,0.9545454545454546,0.9545454545454546,22.0
+Corn_rust_leaf,0.9285714285714286,1.0,0.9629629629629629,13.0
+Peach_leaf,0.0,0.0,0.0,13.0
+Potato_leaf_early_blight,0.0,0.0,0.0,19.0
+Potato_leaf_late_blight,0.0,0.0,0.0,24.0
+Raspberry_leaf,0.0,0.0,0.0,14.0
+Soyabean_leaf,0.0,0.0,0.0,7.0
+Squash_Powdery_mildew_leaf,0.0,0.0,0.0,15.0
+Strawberry_leaf,0.0,0.0,0.0,11.0
+Tomato_Early_blight_leaf,0.0,0.0,0.0,10.0
+Tomato_Septoria_leaf_spot,0.0,0.0,0.0,18.0
+Tomato_leaf,0.0,0.0,0.0,6.0
+Tomato_leaf_bacterial_spot,0.0,0.0,0.0,13.0
+Tomato_leaf_late_blight,0.0,0.0,0.0,13.0
+Tomato_leaf_mosaic_virus,0.0,0.0,0.0,6.0
+Tomato_leaf_yellow_virus,0.36363636363636365,0.14814814814814814,0.21052631578947367,27.0
+Tomato_mold_leaf,0.0,0.0,0.0,11.0
+Tomato_two_spotted_spider_mites_leaf,0.0,0.0,0.0,1.0
+grape_leaf,0.0,0.0,0.0,8.0
+grape_leaf_black_rot,0.0,0.0,0.0,9.0
+accuracy,0.23123123123123124,0.23123123123123124,0.23123123123123124,0.23123123123123124
+macro avg,0.2537105751391466,0.24473905723905723,0.24742981190349608,333.0
+weighted avg,0.24848874848874847,0.23123123123123124,0.23604423136586877,333.0
