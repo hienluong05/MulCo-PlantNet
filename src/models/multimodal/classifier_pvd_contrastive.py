@@ -12,15 +12,13 @@ class MultimodalTextGuidedPVDInfoNCESupCon(nn.Module):
     """
     Version 3:
     - Text-guided CBAM image encoder
-    - CLIP text encoder
+    - Pre-extracted text features
     - PVD fusion
     - support pre-fusion contrastive + post-fusion supervised contrastive
     """
     def __init__(
         self,
         num_classes: int = 28,
-        clip_model_name: str = "ViT-L-14",
-        clip_pretrained: str = "openai",
         text_input_dim: int = 768,
         image_input_dim: int = 1024,
         proj_dim: int = 512,
@@ -33,13 +31,6 @@ class MultimodalTextGuidedPVDInfoNCESupCon(nn.Module):
     ):
         super().__init__()
         self.device = device
-
-        self.text_encoder = CLIPTextEncoder(
-            model_name=clip_model_name,
-            pretrained=clip_pretrained,
-            device=device,
-            normalize=True
-        )
 
         self.image_encoder = ConvNeXtTextGuidedCBAMEncoder(
             text_dim=text_input_dim
@@ -57,8 +48,8 @@ class MultimodalTextGuidedPVDInfoNCESupCon(nn.Module):
             normalize_projection=normalize_projection
         ).to(device)
 
-    def forward(self, images: torch.Tensor, texts: List[str], return_attn: bool = False):
-        text_feat = self.text_encoder(texts)  # [B, 768]
+    def forward(self, images: torch.Tensor, text_feat: torch.Tensor, return_attn: bool = False):
+        # text_feat được giả định đã trích xuất sẵn và truyền vào dạng tensor [B, 768]
 
         if return_attn:
             image_feat, attn_maps = self.image_encoder(images, text_feat, return_attn=True)
