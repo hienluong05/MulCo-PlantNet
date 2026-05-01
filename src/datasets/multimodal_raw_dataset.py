@@ -1,3 +1,4 @@
+import csv
 import json
 import re
 from pathlib import Path
@@ -32,6 +33,39 @@ def is_original_image(path: Path) -> bool:
     return is_image_file(path) and "_depth_suppressed" not in path.stem
 
 
+def build_caption_key_candidates(image_name: str) -> List[str]:
+    """
+    Tạo danh sách key caption có thể khớp từ tên ảnh hiện tại.
+    Ví dụ:
+    - train_Apple leaf_1_depth_suppressed.jpg -> train_Apple leaf_1.jpg
+    """
+    path_obj = Path(image_name)
+    suffix = path_obj.suffix
+    stem = path_obj.stem
+    candidates = []
+
+    # Ưu tiên key gốc khi ảnh depth được hậu tố _depth_suppressed
+    if stem.endswith("_depth_suppressed"):
+        base_stem = stem[: -len("_depth_suppressed")]
+        candidates.append(f"{base_stem}{suffix}")
+
+    # Fallback: chính tên hiện tại
+    candidates.append(image_name)
+
+    # Loại trùng nhưng giữ thứ tự
+    unique = []
+    seen = set()
+    for c in candidates:
+        if c not in seen:
+            unique.append(c)
+            seen.add(c)
+    return unique
+
+
+def _normalize_rel_key(path_text: str) -> str:
+    return str(path_text).replace("\\", "/").strip().lower()
+
+
 class MultiModalRawDataset(Dataset):
     """
     Dataset cho Ver2:
@@ -63,13 +97,15 @@ class MultiModalRawDataset(Dataset):
         caption_root,
         transform=None,
         use_depth_suppressed: bool = False,
-        strict_caption_match: bool = True
+        strict_caption_match: bool = True,
+        image_caption_mapping_path: Optional[str] = None,
     ):
         self.image_root = Path(image_root)
         self.caption_root = Path(caption_root)
         self.transform = transform
         self.use_depth_suppressed = use_depth_suppressed
         self.strict_caption_match = strict_caption_match
+        self.image_caption_mapping_path = Path(image_caption_mapping_path) if image_caption_mapping_path else None
 
         if not self.image_root.exists():
             raise FileNotFoundError(f"Image root not found: {self.image_root}")
@@ -78,6 +114,7 @@ class MultiModalRawDataset(Dataset):
             raise FileNotFoundError(f"Caption root not found: {self.caption_root}")
 
         self.caption_db = self._load_caption_db()
+        self.image_to_caption_key_map = self._load_image_caption_mapping()
         self.samples = self._build_samples()
 
         if len(self.samples) == 0:
@@ -113,6 +150,61 @@ class MultiModalRawDataset(Dataset):
 
         return caption_db
 
+    def _load_image_caption_mapping(self) -> Dict[str, str]:
+        """
+        Trả về map:
+        {
+            "class_a/image_depth_name.jpg": "caption_key_name.jpg",
+            ...
+        }
+        Hỗ trợ:
+        - JSON: {"class_a/image.jpg": "caption.jpg"} hoặc {"class_a": {"image.jpg": "caption.jpg"}}
+        - CSV: cột bắt buộc image_name, caption_key; tùy chọn class_name
+        """
+        if self.image_caption_mapping_path is None:
+            return {}
+
+        if not self.image_caption_mapping_path.exists():
+            raise FileNotFoundError(f"Mapping file not found: {self.image_caption_mapping_path}")
+
+        suffix = self.image_caption_mapping_path.suffix.lower()
+        mapping: Dict[str, str] = {}
+
+        if suffix == ".json":
+            with open(self.image_caption_mapping_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if not isinstance(data, dict):
+                raise ValueError("JSON mapping must be an object/dict.")
+
+            for key, value in data.items():
+                if isinstance(value, str):
+                    mapping[_normalize_rel_key(key)] = value
+                elif isinstance(value, dict):
+                    class_name = str(key).strip()
+                    for image_name, caption_key in value.items():
+                        if isinstance(caption_key, str):
+                            rel = _normalize_rel_key(f"{class_name}/{image_name}")
+                            mapping[rel] = caption_key
+        elif suffix == ".csv":
+            with open(self.image_caption_mapping_path, "r", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                required = {"image_name", "caption_key"}
+                if not required.issubset(set(reader.fieldnames or [])):
+                    raise ValueError("CSV mapping must contain columns: image_name, caption_key (optional: class_name)")
+                for row in reader:
+                    image_name = (row.get("image_name") or "").strip()
+                    caption_key = (row.get("caption_key") or "").strip()
+                    class_name = (row.get("class_name") or "").strip()
+                    if not image_name or not caption_key:
+                        continue
+                    rel = _normalize_rel_key(f"{class_name}/{image_name}" if class_name else image_name)
+                    mapping[rel] = caption_key
+        else:
+            raise ValueError("Mapping file must be .json or .csv")
+
+        print(f"[MultiModalRawDataset] Loaded image-caption mapping: {len(mapping)} entries")
+        return mapping
+
     def _select_image_paths(self) -> List[Path]:
         all_paths = sorted([p for p in self.image_root.rglob("*") if is_image_file(p)])
 
@@ -132,6 +224,7 @@ class MultiModalRawDataset(Dataset):
         samples = []
         skipped_missing_caption = 0
         skipped_invalid_caption = 0
+        mapped_by_file = 0
 
         for image_path in image_paths:
             class_name = image_path.parent.name
@@ -156,7 +249,27 @@ class MultiModalRawDataset(Dataset):
                     })
                     continue
 
-            record = class_caption_map.get(image_name, None)
+            record = None
+            matched_caption_key = None
+            rel_key_with_class = _normalize_rel_key(f"{class_name}/{image_name}")
+            rel_key_image_only = _normalize_rel_key(image_name)
+
+            mapped_caption_key = self.image_to_caption_key_map.get(rel_key_with_class)
+            if mapped_caption_key is None:
+                mapped_caption_key = self.image_to_caption_key_map.get(rel_key_image_only)
+            if mapped_caption_key is not None:
+                candidate_record = class_caption_map.get(mapped_caption_key, None)
+                if isinstance(candidate_record, dict):
+                    record = candidate_record
+                    matched_caption_key = mapped_caption_key
+                    mapped_by_file += 1
+
+            if record is None:
+                for candidate_key in build_caption_key_candidates(image_name):
+                    record = class_caption_map.get(candidate_key, None)
+                    if isinstance(record, dict):
+                        matched_caption_key = candidate_key
+                        break
 
             if record is None or not isinstance(record, dict):
                 if self.strict_caption_match:
@@ -192,13 +305,14 @@ class MultiModalRawDataset(Dataset):
                 "class_name": class_name,
                 "label": int(label) if label is not None else self.class_to_idx[class_name],
                 "text": caption,
-                "source_json": f"{class_name}.json"
+                "source_json": f"{class_name}.json::{matched_caption_key}" if matched_caption_key is not None else f"{class_name}.json"
             })
 
         print(f"[MultiModalRawDataset] Total selected images: {len(image_paths)}")
         print(f"[MultiModalRawDataset] Valid samples: {len(samples)}")
         print(f"[MultiModalRawDataset] Skipped missing caption: {skipped_missing_caption}")
         print(f"[MultiModalRawDataset] Skipped invalid caption: {skipped_invalid_caption}")
+        print(f"[MultiModalRawDataset] Matched by external mapping: {mapped_by_file}")
         print(f"[MultiModalRawDataset] Num classes: {len(self.class_to_idx)}")
         print(f"[MultiModalRawDataset] class_to_idx: {self.class_to_idx}")
 
@@ -210,12 +324,7 @@ class MultiModalRawDataset(Dataset):
     def __getitem__(self, idx):
         item = self.samples[idx]
 
-        try:
-            image = Image.open(item["image_path"]).convert("RGB")
-        except Exception as e:
-            print(f"[ERROR] Failed to open image: {item['image_path']}")
-            raise e
-
+        image = Image.open(item["image_path"]).convert("RGB")
         if self.transform is not None:
             image = self.transform(image)
 
