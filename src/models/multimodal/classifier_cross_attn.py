@@ -1,5 +1,11 @@
 import torch.nn as nn
-from src.models.fusion.multimodal_cross_attn_fusion import MultimodalCrossAttnFusion
+from pathlib import Path
+import sys
+
+# Lấy đường dẫn thư mục gốc (lùi ra 3 cấp thư mục: multimodal -> models -> src -> MulCo-PlantNet)
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+sys.path.append(str(PROJECT_ROOT))
+from src.models.fusion.fusion_cross_attn import MultimodalCrossAttnFusion 
 
 class MultimodalCrossAttnClassifier(nn.Module):
     def __init__(

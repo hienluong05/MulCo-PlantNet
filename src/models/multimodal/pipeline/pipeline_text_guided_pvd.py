@@ -4,7 +4,7 @@ from typing import List, Union
 import torch
 import torch.nn as nn
 
-from src.models.multimodal.multimodal_text_guided_pvd_classifier import (
+from src.models.multimodal.classifier_pvd_guided import (
     MultimodalTextGuidedPVDClassifier,
 )
 

@@ -6,7 +6,7 @@ import torch.nn as nn
 
 from src.models.backbones.text.clip_text_encoder import CLIPTextEncoder
 from src.models.backbones.vision.convnext_cbam_image_encoder import ConvNeXtCBAMImageEncoder
-from src.models.multimodal.multimodal_pvd_classifier import MultimodalPVDClassifier
+from src.models.multimodal.classifier_pvd_base import MultimodalPVDClassifier
 
 
 class MultiModalPipelineConvNeXtCBAMCLIPPVD(nn.Module):

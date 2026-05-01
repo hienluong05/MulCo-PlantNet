@@ -8,7 +8,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.append(str(PROJECT_ROOT))
 
 from src.datasets.multimodal_feature_dataset import MultiModalFeatureDataset
-from src.models.multimodal.multimodal_pvd_classifier import MultimodalPVDClassifier
+from src.models.multimodal.classifier_pvd_base import MultimodalPVDClassifier
 
 
 device = "cuda" if torch.cuda.is_available() else "cpu"

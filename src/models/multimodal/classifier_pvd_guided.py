@@ -5,7 +5,7 @@ import torch.nn as nn
 
 from src.models.backbones.text.clip_text_encoder import CLIPTextEncoder
 from src.models.backbones.vision.convnext_text_guided_cbam_encoder import ConvNeXtTextGuidedCBAMEncoder
-from src.models.multimodal.multimodal_pvd_classifier import MultimodalPVDClassifier
+from src.models.multimodal.classifier_pvd_base import MultimodalPVDClassifier
 
 
 class MultimodalTextGuidedPVDClassifier(nn.Module):

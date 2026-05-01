@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from src.models.fusion.multimodal_pvd_fusion import MultimodalPVDFusion
+from src.models.fusion.fusion_pvd_standard import MultimodalPVDFusion
 from src.models.heads.classification_head import ClassificationHead
 
 

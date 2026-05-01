@@ -9,7 +9,7 @@
   "use_depth_suppressed": false,
   "strict_caption_match": true,
   "device": "cuda",
-  "resume_from_state_dict": "/media/data3/users/luongdth/MulCo-PlantNet/archive/multimodal_text_guided/multimodal_text_guided_pvd_classifier_state_dict.pth",
+  "resume_from_state_dict": "/media/data3/users/luongdth/MulCo-PlantNet/archive/multimodal_text_guided/classifier_pvd_guided_state_dict.pth",
   "start_epoch": 1,
   "end_epoch": 3,
   "best_acc_before_resume": 0.9379280821917808,
