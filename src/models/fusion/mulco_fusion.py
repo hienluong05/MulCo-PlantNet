@@ -47,6 +47,54 @@ class GDFN(nn.Module):
         x = self.project_out(x)
         return x
 
+class CrossAttention(nn.Module):
+    def __init__(self, dim, num_heads=8):
+        super().__init__()
+        self.num_heads = num_heads
+        self.scale = (dim // num_heads) ** -0.5
+        
+        # Truy vấn (Query - Q) từ đặc trưng hình ảnh
+        self.q_proj = nn.Conv2d(dim, dim, kernel_size=1)
+        
+        # Khóa (Key - K) từ đặc trưng văn bản
+        self.k_proj = nn.Linear(dim, dim)
+        
+        # Giá trị (Value - V) từ đặc trưng hình ảnh (Đảo ngược để tạo Soft Filter)
+        self.v_proj = nn.Conv2d(dim, dim, kernel_size=1)
+        
+        self.out_proj = nn.Conv2d(dim, dim, kernel_size=1)
+
+    def forward(self, img_feat, txt_feat):
+        b, c, h, w = img_feat.shape
+        _, l, _ = txt_feat.shape
+        
+        # 1. Q từ Image: [B, heads, H*W, C/heads]
+        q = self.q_proj(img_feat).view(b, self.num_heads, c // self.num_heads, h * w).transpose(-2, -1)
+        
+        # 2. V từ Image: [B, heads, H*W, C/heads]
+        v = self.v_proj(img_feat).view(b, self.num_heads, c // self.num_heads, h * w).transpose(-2, -1)
+        
+        # 3. K từ Text: SỬ DỤNG TOÀN BỘ CHUỖI TOKENS thay vì gom cụm (mean)
+        # k sẽ có hình dạng: [B, heads, C/heads, L] với L là độ dài chuỗi văn bản
+        k = self.k_proj(txt_feat).view(b, l, self.num_heads, c // self.num_heads).transpose(1, 2)
+        k = k.transpose(-2, -1)
+        
+        # 4. Tính toán Ma trận Attention: q @ k -> [B, heads, H*W, L]
+        # Mỗi pixel trên ảnh (H*W) sẽ đối chiếu với TẤT CẢ các token chữ (L)
+        attn = (q @ k) * self.scale
+        
+        # Lấy token có độ tương đồng cao nhất cho mỗi pixel (Max Pooling dọc theo chiều L)
+        # Trả lời câu hỏi: Pixel này giống với từ khóa nào nhất trong câu mô tả?
+        best_matching_tokens = attn.max(dim=-1)[0] # -> [B, heads, H*W]
+        soft_filter = torch.sigmoid(best_matching_tokens).unsqueeze(-1) # -> [B, heads, H*W, 1]
+        
+        # 5. Ép mạng ưu tiên tập trung vào vùng bệnh (Out = V * Soft Filter)
+        out = v * soft_filter
+        
+        # Phục hồi kích thước về ảnh 2D ban đầu
+        out = out.transpose(-2, -1).reshape(b, c, h, w)
+        return self.out_proj(out)
+
 class RestormerBlock(nn.Module):
     def __init__(self, dim, num_heads):
         super().__init__()
@@ -68,11 +116,12 @@ class MulCoFusionBlock(nn.Module):
     """Module Dung hợp bao gồm Reversed Cross-Attention (tạm đơn giản hóa) và Restormer"""
     def __init__(self, dim, num_heads=8):
         super().__init__()
-        # Có thể tách riêng Cross-Attention nếu muốn, hiện tại tích hợp xử lý ở đây
+        self.cross_attn = CrossAttention(dim, num_heads)
         self.restormer = RestormerBlock(dim, num_heads)
 
     def forward(self, img_feat, txt_feat):
-        # (Tạm giả định img_feat đã được Text dẫn dắt qua Cross Attention ở bước ngoài hoặc xử lý ghép)
-        # Tinh chỉnh đặc trưng bằng Restormer
-        refined_img = self.restormer(img_feat)
+        # 1. Text hướng dẫn Image (Cross Attention)
+        guided_img = img_feat + self.cross_attn(img_feat, txt_feat)
+        # 2. Tinh chỉnh đặc trưng bằng Restormer (Self Attention)
+        refined_img = self.restormer(guided_img)
         return refined_img, txt_feat

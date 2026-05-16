@@ -10,7 +10,7 @@ from tqdm import tqdm
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.append(str(PROJECT_ROOT))
 
-from src.models.backbones.text.clip_text_encoder import CLIPTextEncoder
+from transformers import AutoTokenizer, AutoModel
 
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -21,8 +21,8 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 caption_root = PROJECT_ROOT / "data" / "AIDG" / "captions_LLaVA" / "train"
 output_root = PROJECT_ROOT / "data" / "features" / "encoded_text"
 
-embedding_path = output_root / "train_text_embeddings_clip_vitl14.npy"
-metadata_path = output_root / "train_text_embeddings_clip_vitl14_metadata.json"
+embedding_path = output_root / "train_text_embeddings_roberta.npy"
+metadata_path = output_root / "train_text_embeddings_roberta_metadata.json"
 
 print("PROJECT_ROOT:", PROJECT_ROOT)
 print("Caption root:", caption_root)
@@ -99,13 +99,10 @@ captions = [item["caption"] for item in all_items]
 # =========================
 # 4. LOAD ENCODER
 # =========================
-print("Loading CLIP text encoder...")
-text_encoder = CLIPTextEncoder(
-    model_name="ViT-L-14",
-    pretrained="openai",
-    device=device,
-    normalize=True
-)
+print("Loading RoBERTa text encoder...")
+tokenizer = AutoTokenizer.from_pretrained("roberta-base")
+text_encoder = AutoModel.from_pretrained("roberta-base").to(device)
+text_encoder.eval()
 
 # =========================
 # 5. ENCODE TEXT
@@ -113,11 +110,16 @@ text_encoder = CLIPTextEncoder(
 batch_size = 64
 all_embeddings = []
 
-print("Encoding captions with CLIP...")
+print("Encoding captions with RoBERTa...")
 with torch.no_grad():
     for i in tqdm(range(0, len(captions), batch_size), desc="Encoding text"):
         batch_texts = captions[i:i + batch_size]
-        feats = text_encoder(batch_texts)
+        inputs = tokenizer(batch_texts, padding=True, truncation=True, max_length=256, return_tensors="pt").to(device)
+        outputs = text_encoder(**inputs)
+        # Sử dụng mean pooling trên token thay cho đặc trưng CLS nguyên bản
+        feats = outputs.last_hidden_state.mean(dim=1)
+        # Chuẩn hóa độ dài vector tương tự như CLIP thực hiện
+        feats = torch.nn.functional.normalize(feats, p=2, dim=1)
         all_embeddings.append(feats.cpu())
 
 all_embeddings = torch.cat(all_embeddings, dim=0).numpy()
