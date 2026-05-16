@@ -7,11 +7,13 @@ class Conv1x1Classifier(nn.Module):
     """
     def __init__(self, in_channels, num_classes):
         super().__init__()
+        self.dropout = nn.Dropout2d(p=0.3)
         self.conv_1x1 = nn.Conv2d(in_channels, num_classes, kernel_size=1)
         self.bn = nn.BatchNorm2d(num_classes)
         self.gap = nn.AdaptiveAvgPool2d(1)
 
     def forward(self, x):
+        x = self.dropout(x)
         x = self.conv_1x1(x)
         x = self.bn(x)
         x = self.gap(x)

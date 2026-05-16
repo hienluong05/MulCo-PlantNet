@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch.nn.functional as F
 from transformers import AutoModel
 from src.models.backbones.vision.convnext_cbam import ConvNeXt_CBAM
 from src.models.fusion.mulco_fusion import MulCoFusionBlock
@@ -22,6 +23,7 @@ class MulCoEndToEnd(nn.Module):
 
     def forward(self, images, input_ids, attention_mask):
         img_feat = self.image_backbone.forward_features_spatial(images) 
+        
         txt_out = self.text_backbone(input_ids=input_ids, attention_mask=attention_mask)
         txt_feat = txt_out.last_hidden_state
         
@@ -31,4 +33,5 @@ class MulCoEndToEnd(nn.Module):
         for block in self.fusion_blocks:
             img_feat, txt_feat = block(img_feat, txt_feat)
             
-        return self.classifier(img_feat)
+        logits = self.classifier(img_feat)
+        return logits
