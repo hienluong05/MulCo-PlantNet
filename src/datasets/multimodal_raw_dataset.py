@@ -133,7 +133,8 @@ class MultiModalRawDataset(Dataset):
         """
         caption_db = {}
 
-        json_files = sorted(self.caption_root.glob("*.json"))
+        # Quét đệ quy (recursive) mọi file JSON trong tất cả thư mục con (train, test, val)
+        json_files = sorted(self.caption_root.rglob("*.json"))
         if len(json_files) == 0:
             raise FileNotFoundError(f"No JSON files found in: {self.caption_root}")
 
@@ -146,7 +147,10 @@ class MultiModalRawDataset(Dataset):
             if not isinstance(data, dict):
                 continue
 
-            caption_db[class_name] = data
+            # Gộp (merge) dictionary nếu class này nằm ở nhiều thư mục khác nhau
+            if class_name not in caption_db:
+                caption_db[class_name] = {}
+            caption_db[class_name].update(data)
 
         return caption_db
 
