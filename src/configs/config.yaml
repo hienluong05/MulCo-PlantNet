@@ -1,0 +1,23 @@
+# Dự án MulCo-PlantNet
+# Cấu hình siêu tham số (Hyperparameters) cho quá trình huấn luyện và đánh giá.
+
+training:
+  batch_size: 8
+  learning_rate: 1e-4
+  num_epochs: 30
+  weight_decay: 1e-4
+
+model:
+  num_classes: 28
+  proj_dim: 512
+  num_heads: 8
+  fusion_blocks: 1
+  image_backbone: "convnext_base"
+  text_backbone: "roberta-base"
+
+data:
+  # Cập nhật đường dẫn tuyệt đối hoặc tương đối tới thư mục data
+  image_root_train: "./data/processed/PlantDocSplited_depth_AUG/train"
+  image_root_val: "./data/processed/PlantDocSplited_depth_AUG/validation"
+  caption_root: "./data/AIDG/captions_LLaVA"
+  image_size: 224

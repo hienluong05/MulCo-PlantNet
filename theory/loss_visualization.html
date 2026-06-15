@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mô phỏng Class-Balanced Focal Loss</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background-color: #f8f9fa;
+      }
+
+      /* Container chính sử dụng Flexbox để chia 2 cột */
+      .layout-container {
+        display: flex;
+        gap: 25px;
+        max-width: 1400px;
+        margin: 0 auto;
+        align-items: flex-start;
+      }
+
+      /* Cột thanh bên (Sidebar) */
+      .sidebar {
+        flex: 0 0 350px; /* Chiều rộng cố định 350px */
+        position: sticky; /* Cố định khi cuộn trang */
+        top: 20px;
+      }
+
+      /* Cột nội dung chính (Chứa biểu đồ) */
+      .main-content {
+        flex: 1;
+        min-width: 0; /* Ngăn biểu đồ bị tràn kích thước */
+      }
+
+      h2 {
+        color: #333;
+        margin-top: 0;
+        margin-bottom: 20px;
+        font-size: 24px;
+      }
+
+      .controls {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .control-group {
+        margin-bottom: 20px;
+      }
+
+      .control-group label {
+        display: block;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 8px;
+      }
+
+      .input-wrapper {
+        display: flex;
+        align-items: center;
+      }
+
+      .input-wrapper input,
+      .input-wrapper select {
+        flex: 1;
+        cursor: pointer;
+        padding: 5px;
+      }
+
+      .value-display {
+        margin-left: 15px;
+        font-weight: bold;
+        width: 60px;
+        text-align: right;
+        color: #007bff;
+      }
+
+      .chart-container {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+      }
+
+      /* Responsive: Hiển thị 1 cột trên màn hình nhỏ */
+      @media (max-width: 850px) {
+        .layout-container {
+          flex-direction: column;
+        }
+        .sidebar {
+          flex: auto;
+          width: 100%;
+          position: relative;
+          top: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="layout-container">
+      <!-- Cột Menu Điều Chỉnh -->
+      <div class="sidebar">
+        <div class="controls">
+          <h2>Bảng Điều Khiển</h2>
+          <div class="control-group">
+            <label for="nMaj">Số mẫu lớp Đa số (Majority N):</label>
+            <div class="input-wrapper">
+              <input
+                type="range"
+                id="nMaj"
+                min="1000"
+                max="100000"
+                step="1000"
+                value="10000"
+              />
+              <span class="value-display" id="valMaj">10000</span>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label for="nMin">Số mẫu lớp Thiểu số (Minority N):</label>
+            <div class="input-wrapper">
+              <input
+                type="range"
+                id="nMin"
+                min="10"
+                max="1000"
+                step="10"
+                value="100"
+              />
+              <span class="value-display" id="valMin">100</span>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label for="gamma">Tham số hội tụ (Gamma &gamma;):</label>
+            <div class="input-wrapper">
+              <input
+                type="range"
+                id="gamma"
+                min="0"
+                max="5"
+                step="0.5"
+                value="2"
+              />
+              <span class="value-display" id="valGamma">2.0</span>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label for="beta">Cân bằng thông tin (Beta &beta;):</label>
+            <div class="input-wrapper">
+              <select id="beta">
+                <option value="0.9">0.9</option>
+                <option value="0.99">0.99</option>
+                <option value="0.999" selected>0.999</option>
+                <option value="0.9999">0.9999</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cột Biểu Đồ -->
+      <div class="main-content">
+        <h2 style="text-align: center; color: #333">
+          Mô phỏng Class-Balanced Focal Loss
+        </h2>
+
+        <div class="chart-container">
+          <canvas id="chartMinority"></canvas>
+        </div>
+
+        <div class="chart-container">
+          <canvas id="chartMajority"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Khởi tạo dải xác suất pt từ 0.01 đến 0.99
+      const pt = Array.from({ length: 99 }, (_, i) => (i + 1) / 100);
+
+      // Khởi tạo 2 biểu đồ
+      let chartMin = new Chart(
+        document.getElementById("chartMinority"),
+        getChartConfig("Loss cho Lớp Thiểu số (Ít dữ liệu)"),
+      );
+      let chartMaj = new Chart(
+        document.getElementById("chartMajority"),
+        getChartConfig("Loss cho Lớp Đa số (Nhiều dữ liệu)"),
+      );
+
+      function getChartConfig(titleText) {
+        return {
+          type: "line",
+          data: {
+            labels: pt.map((p) => p.toFixed(2)),
+            datasets: [
+              {
+                label: "Cross Entropy (CE)",
+                borderColor: "#dc3545",
+                borderWidth: 2,
+                pointRadius: 0,
+                data: [],
+              },
+              {
+                label: "Focal Loss (FL)",
+                borderColor: "#28a745",
+                borderWidth: 2,
+                pointRadius: 0,
+                data: [],
+              },
+              {
+                label: "Class-Balanced FL (CB-FL)",
+                borderColor: "#007bff",
+                borderWidth: 3,
+                pointRadius: 0,
+                data: [],
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              title: { display: true, text: titleText, font: { size: 16 } },
+              tooltip: { mode: "index", intersect: false },
+            },
+            scales: {
+              x: {
+                title: { display: true, text: "Xác suất dự đoán đúng (p_t)" },
+              },
+              y: {
+                title: { display: true, text: "Giá trị Loss" },
+                beginAtZero: true,
+              },
+            },
+          },
+        };
+      }
+
+      function calculateLosses() {
+        // Lấy giá trị từ UI
+        const N_maj = parseFloat(document.getElementById("nMaj").value);
+        const N_min = parseFloat(document.getElementById("nMin").value);
+        const gamma = parseFloat(document.getElementById("gamma").value);
+        const beta = parseFloat(document.getElementById("beta").value);
+
+        // Cập nhật text hiển thị
+        document.getElementById("valMaj").innerText = N_maj;
+        document.getElementById("valMin").innerText = N_min;
+        document.getElementById("valGamma").innerText = gamma.toFixed(1);
+
+        // Tính Effective Number of Samples (Mẫu hiệu dụng)
+        const eff_min = (1 - beta) / (1 - Math.pow(beta, N_min));
+        const eff_maj = (1 - beta) / (1 - Math.pow(beta, N_maj));
+
+        // Chuẩn hóa trọng số
+        const sum_eff = eff_min + eff_maj;
+        const weight_min = (eff_min / sum_eff) * 2;
+        const weight_maj = (eff_maj / sum_eff) * 2;
+
+        // Tính toán data cho đồ thị
+        let ceData = [],
+          flData = [],
+          cbflMinData = [],
+          cbflMajData = [];
+
+        for (let p of pt) {
+          let ce = -Math.log(p);
+          let fl = Math.pow(1 - p, gamma) * ce;
+
+          ceData.push(ce);
+          flData.push(fl);
+          cbflMinData.push(weight_min * fl);
+          cbflMajData.push(weight_maj * fl);
+        }
+
+        // Cập nhật đồ thị Lớp Thiểu Số
+        chartMin.data.datasets[0].data = ceData;
+        chartMin.data.datasets[1].data = flData;
+        chartMin.data.datasets[2].data = cbflMinData;
+        chartMin.update();
+
+        // Cập nhật đồ thị Lớp Đa Số
+        chartMaj.data.datasets[0].data = ceData;
+        chartMaj.data.datasets[1].data = flData;
+        chartMaj.data.datasets[2].data = cbflMajData;
+        chartMaj.update();
+      }
+
+      // Lắng nghe sự kiện thay đổi
+      document.querySelectorAll("input, select").forEach((el) => {
+        el.addEventListener("input", calculateLosses);
+      });
+
+      // Vẽ biểu đồ lần đầu tiên
+      calculateLosses();
+    </script>
+  </body>
+</html>
