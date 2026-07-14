@@ -1,0 +1,13 @@
+# 6. CONCLUSION AND FUTURE WORK
+
+## 6.1. Conclusion
+
+This study successfully proposed and implemented MulCo, an End-to-End multimodal machine learning framework designed to address core challenges in phytopathology recognition under in-the-wild conditions. By adopting an Automated Image Description Generation (AIDG) approach via a Large Multimodal Model (LLaVA), the research overcame the barrier of textual data scarcity, creating a rich semantic resource without the need for manual human annotation. 
+
+The core architecture of MulCo—which integrates linguistic feature guidance into the visual network through the Cross-Attention fusion block and Restormer refinement mechanism, alongside the GeMPool spatial pooling layer—has demonstrated exceptional capability in detecting micro-lesions and eliminating complex background noise. Notably, by optimizing the Class-Balanced Focal Loss on a Micro-Unfreezing foundation, the model thoroughly resolved the performance degradation caused by severe long-tailed data distributions. Experimental results indicate that the system achieved an Accuracy of 87.20% and a Macro F1-Score of 86.25%, establishing a new methodological paradigm for transforming unimodal image datasets into high-performance multimodal diagnostic systems in agriculture.
+
+## 6.2. Future Work
+
+Although the MulCo architecture delivers high diagnostic reliability, deploying the system still faces computational overhead challenges during the inference phase, primarily stemming from the latency of the automated language generation model. To minimize end-to-end execution latency and facilitate fully independent deployment on low-end mobile edge devices (Edge AI) in the future, research will focus on replacing the large language generator with ultra-compact Vision-Language Models (Lightweight VLMs, such as TinyVLM or BLIP) via Knowledge Distillation techniques. Simultaneously, the application of Weight Quantization methods coupled with hardware acceleration technologies like TensorRT will optimize computational resources while preserving the integrity of MulCo's fusion convergence structure.
+
+Furthermore, considering the vast biodiversity in agriculture, the subsequent research trajectory will integrate Continual Learning mechanisms. This process will enable the system to automatically update its knowledge regarding newly emerging crop disease variants across agricultural seasons without degrading or experiencing catastrophic forgetting of previously learned pathological features, thereby constructing a comprehensive and sustainable agricultural disease monitoring system.

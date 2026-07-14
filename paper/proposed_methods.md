@@ -1,6 +1,18 @@
 # Khung dán nhãn ngoại tuyến
 
-Nghiên cứu sử dụng LLaVA để sinh mô tả, dựa trên phương pháp Zero-Shot Chain of Thought Prompting.
+Để cung cấp luồng thông tin văn bản đầu vào cho kiến trúc MulCo, nghiên cứu này áp dụng phương pháp Sinh mô tả hình ảnh tự động (Automated Image Description Generation - AIDG) [1] nhằm chuyển đổi tập dữ liệu đơn phương thức PlantDoc. Cụ thể, hệ thống sử dụng mô hình ngôn ngữ lớn đa phương thức LLaVA để tự động tạo ra các đoạn mô tả tự nhiên đa câu cho từng bức ảnh. Quá trình này đóng vai trò là một module tiền xử lý ngoại tuyến (offline preprocessing) độc lập.
+
+Để đảm bảo các mô tả bám sát đúng logic chẩn đoán bệnh học, một cấu trúc gợi ý theo Chuỗi suy luận (Zero-Shot Chain-of-Thought - CoT) được thiết lập theo phương pháp của [1]. Biểu mẫu này định hướng LLaVA tuân theo quy trình lập luận từng bước: nhận diện loại cây, định vị tổn thương, phân tích sự biến đổi màu sắc của lá, cho đến đánh giá các triệu chứng hình thái học (ví dụ: hoại tử, đốm vòng).
+
+Về mặt hình thức toán học [1], với một ảnh đầu vào $I_i$ thuộc tập dữ liệu ảnh gốc $\mathcal{D}_{\text{img}}$, mô tả văn bản có cấu trúc tương ứng $T_i$ được sinh ra thông qua hàm sinh của mô hình đa phương thức được dẫn hướng bằng CoT (ký hiệu là $\mathcal{G}_{\text{CoT}}$):
+
+$T_i = \mathcal{G}_{\text{CoT}}(I_i)$
+
+Sau khi quá trình sinh văn bản hoàn tất, mỗi hình ảnh gốc được kết nối với mô tả của nó để tạo thành một tập dữ liệu giả nhãn (pseudo-labeled dataset) [1]. Tập dữ liệu này được lưu trữ dưới định dạng JSON để đảm bảo sự đồng bộ về mặt ngữ nghĩa và được định nghĩa toán học như sau:
+
+$\mathcal{D}_{\text{pair}} = \{(I_i, T_i)\}_{i=1}^{N}$
+
+Trong đó, $N$ là tổng số lượng mẫu hình ảnh của tập PlantDoc. Tập dữ liệu chất lượng cao $\mathcal{D}_{\text{pair}}$ này cung cấp trực tiếp các tín hiệu ngữ nghĩa (semantic cues) hỗ trợ đắc lực cho mạng phân loại đa phương thức MulCo (downstream multimodal training) ở các giai đoạn tiếp theo.
 
 # Tiền xử lý dữ liệu
 

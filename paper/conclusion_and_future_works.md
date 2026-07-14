@@ -1,0 +1,13 @@
+# 6. KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN (CONCLUSION AND FUTURE WORK)
+
+## 6.1. Kết luận
+
+Nghiên cứu này đã đề xuất và triển khai thành công MulCo, một khung học máy đa phương thức End-to-End, nhằm giải quyết các thách thức cốt lõi trong nhận diện bệnh lý thực vật dưới điều kiện hoang dã. Bằng cách áp dụng phương pháp Sinh mô tả hình ảnh tự động ngoại tuyến (AIDG) thông qua mô hình ngôn ngữ lớn (LLaVA), nghiên cứu đã vượt qua rào cản khan hiếm dữ liệu văn bản, tạo ra một nguồn tài nguyên ngữ nghĩa phong phú mà không cần sự can thiệp gán nhãn thủ công. 
+
+Kiến trúc cốt lõi của MulCo — kết hợp sự dẫn hướng của đặc trưng ngôn ngữ vào mạng thị giác thông qua khối dung hợp Cross-Attention và cơ chế tinh chỉnh Restormer, cùng với lớp gộp không gian GeMPool — đã chứng minh năng lực vượt trội trong việc phát hiện các đốm bệnh vi mô và loại bỏ nhiễu nền phức tạp. Đáng chú ý, thông qua việc tối ưu hóa hàm mất mát Class-Balanced Focal Loss trên nền tảng Mở băng vi mô (Micro-Unfreezing), mô hình đã giải quyết triệt để vấn đề sụt giảm hiệu năng do phân phối dữ liệu đuôi dài (long-tailed distribution). Kết quả thực nghiệm ghi nhận hệ thống đạt Độ chính xác (Accuracy) 87.20% và Macro F1-Score 86.25%, thiết lập một nền tảng phương pháp luận mới cho việc chuyển đổi các bộ dữ liệu hình ảnh đơn phương thức thành hệ thống chẩn đoán đa phương thức hiệu năng cao trong nông nghiệp.
+
+## 6.2. Hướng phát triển tương lai
+
+Mặc dù kiến trúc MulCo mang lại độ tin cậy chẩn đoán cao, quá trình triển khai hệ thống vẫn đối mặt với thách thức về mặt chi phí tính toán tại pha suy luận, chủ yếu phát sinh từ độ trễ của mô hình sinh ngôn ngữ tự động. Trong tương lai, để giảm thiểu độ trễ của luồng thực thi đầu-cuối và hướng tới việc triển khai hoàn toàn độc lập trên các thiết bị di động cấu hình thấp (Edge AI), nghiên cứu sẽ tập trung vào việc thay thế bộ sinh ngôn ngữ lớn bằng các mô hình ngôn ngữ thị giác siêu nhỏ gọn (Lightweight VLMs, chẳng hạn như TinyVLM hoặc BLIP) thông qua kỹ thuật Chưng cất tri thức (Knowledge Distillation). Đồng thời, việc áp dụng các phương pháp Lượng tử hóa trọng số (Weight Quantization) kết hợp với công nghệ tăng tốc phần cứng như TensorRT sẽ giúp tối ưu hóa tài nguyên tính toán trong khi vẫn bảo toàn nguyên vẹn cấu trúc hội tụ dung hợp của mạng MulCo.
+
+Bên cạnh đó, xét trên khía cạnh tính đa dạng sinh học trong nông nghiệp, định hướng nghiên cứu tiếp theo sẽ tích hợp các cơ chế Học liên tục (Continual Learning). Quá trình này sẽ cho phép hệ thống tự động cập nhật tri thức về các biến chủng bệnh lý mới xuất hiện theo từng mùa vụ mà không làm suy giảm hoặc đánh mất (catastrophic forgetting) các đặc trưng bệnh học đã được huấn luyện trước đó, qua đó xây dựng một hệ thống giám sát bệnh học nông nghiệp toàn diện và bền vững.
